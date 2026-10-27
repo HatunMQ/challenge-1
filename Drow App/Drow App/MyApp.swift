@@ -3,7 +3,9 @@ import SwiftUI
 @main struct MyApp: App {
     var body: some Scene {
         WindowGroup {
-            SwiftUIView1()
+            NavigationStack {
+                SwiftUIView1()
+            }
         }
     }
 }

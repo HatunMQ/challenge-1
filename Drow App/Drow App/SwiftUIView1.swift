@@ -63,6 +63,9 @@ struct SwiftUIView1: View {
     // Start on the middle card
     @State private var selectedID: String? = "match"
     @State private var showMenu = false
+    // Opens the mood page; `withScenario` decides if the drawing page shows an idea
+    @State private var goToMood = false
+    @State private var withScenario = true
 
     private var currentIndex: Int {
         drawings.firstIndex { $0.id == selectedID } ?? 0
@@ -96,6 +99,11 @@ struct SwiftUIView1: View {
                     .padding(.trailing, 60)
                     .padding(.top, 70)
             }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(isPresented: $goToMood) {
+            // Closing the drawing page sets goToMood to false, which pops back to this page
+            MoodView(withScenario: withScenario, onClose: { goToMood = false })
         }
     }
 
@@ -148,6 +156,8 @@ struct SwiftUIView1: View {
         VStack(spacing: 8) {
             Button {
                 showMenu = false
+                withScenario = false
+                goToMood = true
             } label: {
                 Text("free draw")
                     .font(.headline)
@@ -159,6 +169,8 @@ struct SwiftUIView1: View {
 
             Button {
                 showMenu = false
+                withScenario = true
+                goToMood = true
             } label: {
                 Text("Draw with scenario")
                     .font(.headline)
