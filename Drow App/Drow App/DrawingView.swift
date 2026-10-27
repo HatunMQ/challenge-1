@@ -11,6 +11,9 @@ struct DrawingView: View {
     // Break timer
     @State private var secondsLeft = 0
     @State private var showBreak = false   // Shows the pass card (and Deep Breath) on top of the drawing
+    // After the X button: the questions, name and motivation pages, shown on top of the drawing
+    @State private var showQuestions = false
+    @State private var finishedImage = UIImage()
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @ObservedObject private var player = SoundPlayer.shared
@@ -74,6 +77,9 @@ struct DrawingView: View {
                 secondsLeft = (breakMinutes ?? 0) * 60   // start the next drawing period
             }
         }
+        .fullScreenCover(isPresented: $showQuestions) {
+            Page13(drawing: finishedImage, onFinish: finishAndGoHome)
+        }
         .alert("Delete this page?", isPresented: $showDeleteAlert) {
             Button("No", role: .cancel) {}
             Button("Yes", role: .destructive) { deletePage() }
@@ -85,7 +91,7 @@ struct DrawingView: View {
     private var topBar: some View {
         HStack {
             Button {
-                onClose?()
+                finishDrawing()
             } label: {
                 Image(systemName: "xmark")
                     .font(.title2.weight(.semibold))
@@ -110,7 +116,7 @@ struct DrawingView: View {
 
     /// Counts down once a second and shows the break reminder at zero.
     private func countDown() {
-        guard breakMinutes != nil, secondsLeft > 0, !showBreak else { return }
+        guard breakMinutes != nil, secondsLeft > 0, !showBreak, !showQuestions else { return }
         secondsLeft -= 1
         if secondsLeft == 0 { showBreak = true }
     }
@@ -389,6 +395,38 @@ struct DrawingView: View {
     }
 
     // MARK: - Actions
+
+    /// The first page as a picture on the paper color, for the pages after drawing.
+    /// The open page lives in `canvas`, so it is used instead of the saved copy.
+    private func exportImage() -> UIImage {
+        let size = canvas.bounds.size
+        guard size.width > 0, size.height > 0 else { return UIImage() }
+
+        let drawing = currentPage == 0 ? canvas.drawing : pages[0]
+        let strokes = drawing.image(from: canvas.bounds, scale: canvas.traitCollection.displayScale)
+        let rect = CGRect(origin: .zero, size: size)
+
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            UIColor(Color.paper).setFill()
+            UIRectFill(rect)
+            strokes.draw(in: rect)
+        }
+    }
+
+    /// The X button: takes a picture of the drawing and opens the questions page.
+    private func finishDrawing() {
+        finishedImage = exportImage()
+        showQuestions = true
+    }
+
+    /// Closes the questions pages first, then goes Home, so both don't change at the same moment.
+    private func finishAndGoHome() {
+        showQuestions = false
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            onClose?()
+        }
+    }
 
     private func openPage(_ index: Int) {
         pages[currentPage] = canvas.drawing
