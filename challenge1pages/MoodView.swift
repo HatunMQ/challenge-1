@@ -3,8 +3,6 @@ import SwiftUI
 struct MoodView: View {
     @State private var mood: Mood?
     @State private var sound: Sound?
-    @State private var breakMinutes = 15.0
-    @State private var noBreak = false
     @State private var showSkipAlert = false
     @State private var goToCanvas = false
     private let player = SoundPlayer.shared
@@ -36,9 +34,6 @@ struct MoodView: View {
                 }
                 .padding(.horizontal, 60)
 
-                BreakPicker(minutes: $breakMinutes, noBreak: $noBreak)
-                    .padding(.horizontal, 60)
-
                 Spacer()
 
                 Button { goToCanvas = true } label: {
@@ -68,14 +63,13 @@ struct MoodView: View {
             Button("Cancel", role: .cancel) {}
             Button("Skip") {
                 mood = nil
-                noBreak = true
                 goToCanvas = true
             }
         } message: {
-            Text("You can start drawing right away without choosing a mood, a sound, or a break time.")
+            Text("You can start drawing right away without choosing a mood or a sound.")
         }
         .navigationDestination(isPresented: $goToCanvas) {
-            DrawingView(mood: mood, breakMinutes: noBreak ? nil : Int(breakMinutes))
+            DrawingView(mood: mood)
         }
     }
 
@@ -90,49 +84,6 @@ struct MoodView: View {
                 player.play(item)
             }
         }
-    }
-}
-
-/// A slider to choose when to take a break, with a "No break" checkbox.
-struct BreakPicker: View {
-    @Binding var minutes: Double
-    @Binding var noBreak: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Break reminder", systemImage: "timer")
-                    .font(.system(size: 22, weight: .heavy))
-                Spacer()
-                Text(noBreak ? "Off" : "\(Int(minutes)) min")
-                    .font(.system(size: 20, weight: .semibold).monospacedDigit())
-                    .contentTransition(.numericText())
-            }
-
-            Slider(value: $minutes, in: 5...30, step: 5) {
-                Text("Break after")
-            } minimumValueLabel: {
-                Text("5").font(.footnote)
-            } maximumValueLabel: {
-                Text("30").font(.footnote)
-            }
-            .tint(.softOrange)
-            .disabled(noBreak)
-            .opacity(noBreak ? 0.4 : 1)
-
-            Button {
-                withAnimation { noBreak.toggle() }
-            } label: {
-                Label("I don't want a break", systemImage: noBreak ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 17, weight: .medium))
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(noBreak ? .isSelected : [])
-        }
-        .foregroundStyle(Color.deepBrown)
-        .padding(22)
-        .background(.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 28))
-        .animation(.easeInOut, value: minutes)
     }
 }
 
