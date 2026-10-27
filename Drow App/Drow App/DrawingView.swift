@@ -5,13 +5,12 @@ import Combine
 struct DrawingView: View {
     let mood: Mood?                 // nil when the user skipped the mood page
     var withScenario = true         // false for "Free draw": no drawing idea is shown
-    var breakMinutes: Int? = nil    // nil means no break reminder
+    var breakMinutes: Int? = 20     // Minutes of drawing before the break card shows; nil means no break reminder
     var onClose: (() -> Void)?      // Goes to the Home page. Linked later by the team; does nothing until then.
-    var onBreak: (() -> Void)?      // Goes to the Deep Breath page. Linked later by the team; does nothing until then.
 
     // Break timer
     @State private var secondsLeft = 0
-    @State private var showBreakAlert = false
+    @State private var showBreak = false   // Shows the pass card (and Deep Breath) on top of the drawing
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @ObservedObject private var player = SoundPlayer.shared
@@ -68,11 +67,12 @@ struct DrawingView: View {
         .onDisappear { player.stop() }
         .onAppear { secondsLeft = (breakMinutes ?? 0) * 60 }
         .onReceive(ticker) { _ in countDown() }
-        .alert("Time for a break", isPresented: $showBreakAlert) {
-            Button("5 more minutes") { secondsLeft = 5 * 60 }
-            Button("Take a break", role: .cancel) { onBreak?() }
-        } message: {
-            Text("You've been drawing for a while. Let's take a deep breath together.")
+        // Covers the page instead of leaving it, so the drawing is kept when the user comes back
+        .fullScreenCover(isPresented: $showBreak) {
+            BreakFlowView {
+                showBreak = false
+                secondsLeft = (breakMinutes ?? 0) * 60   // start the next drawing period
+            }
         }
         .alert("Delete this page?", isPresented: $showDeleteAlert) {
             Button("No", role: .cancel) {}
@@ -95,15 +95,6 @@ struct DrawingView: View {
 
             Spacer()
 
-            if breakMinutes != nil && secondsLeft > 0 {
-                Label(timeText, systemImage: "timer")
-                    .font(.subheadline.bold().monospacedDigit())
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .accessibilityLabel("Break in \(secondsLeft / 60) minutes")
-            }
-
             if pages.count > 1 {
                 Text("Page \(currentPage + 1) of \(pages.count)")
                     .font(.subheadline.bold())
@@ -117,16 +108,11 @@ struct DrawingView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    /// Time left before the break, shown as 12:05.
-    private var timeText: String {
-        String(format: "%d:%02d", secondsLeft / 60, secondsLeft % 60)
-    }
-
     /// Counts down once a second and shows the break reminder at zero.
     private func countDown() {
-        guard breakMinutes != nil, secondsLeft > 0, !showBreakAlert else { return }
+        guard breakMinutes != nil, secondsLeft > 0, !showBreak else { return }
         secondsLeft -= 1
-        if secondsLeft == 0 { showBreakAlert = true }
+        if secondsLeft == 0 { showBreak = true }
     }
 
     // MARK: - Left sliders (size, opacity, undo, redo)
