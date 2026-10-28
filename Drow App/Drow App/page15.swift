@@ -1,16 +1,14 @@
 import SwiftUI
 
 struct Page15: View {
-    var sketchName: String = ""
     var onDone: () -> Void = {}
 
     private let gold = Color(red: 0.97, green: 0.83, blue: 0.45)
 
+    // Only the card: the pages behind it stay visible (blurred by the page that shows this one)
     var body: some View {
         ZStack {
-            Image("rere")
-                .resizable()
-                .scaledToFill()
+            Color.black.opacity(0.2)
                 .ignoresSafeArea()
 
             card

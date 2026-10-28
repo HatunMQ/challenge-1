@@ -1,13 +1,22 @@
 // xcode: set sdk=iOS
 
 import SwiftUI
+import SwiftData
 
 struct Page13: View {
     let drawing: UIImage
+    /// The strokes of each drawing page, saved so the drawing can be edited later.
+    var pagesData: [Data] = []
+    /// Set when editing a saved drawing: its answers are shown and it is updated instead of added.
+    var editing: SavedDrawing?
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var didLoadAnswers = false
 
     @State private var drawnBecause: String = ""
     @State private var noticedToday: String = ""
     @State private var showPopup = false
+    @State private var showMotivation = false
     @FocusState private var focusedField: Field?
    enum Field { case because, noticed }
 
@@ -26,13 +35,35 @@ struct Page13: View {
                 .disabled(showPopup)
 
             if showPopup {
-                Page14(onContinue: { name, signature in
+                Page14(onContinue: { name, signature, strokes in
+                    saveDrawing(name: name, signature: signature, signatureStrokes: strokes)
                     onNext(name, signature)
-                }, onDone: onFinish)
+                    showMotivation = true
+                }, initialName: editing?.title ?? "",
+                       initialStrokes: editing?.signatureStrokes ?? Data())
+                // Blurred while the motivation card is on top, so only the card has focus
+                .blur(radius: showMotivation ? 14 : 0)
+                .disabled(showMotivation)
                 .transition(.scale.combined(with: .opacity))
+            }
+
+            // The motivation card comes on top of the blurred pages; tapping it goes back Home
+            if showMotivation {
+                Page15(onDone: onFinish)
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showPopup)
+        .animation(.easeInOut(duration: 0.3), value: showMotivation)
+        .onAppear(perform: loadAnswers)
+    }
+
+    /// Fills in the saved answers once, when editing.
+    private func loadAnswers() {
+        guard !didLoadAnswers, let editing else { return }
+        didLoadAnswers = true
+        drawnBecause = editing.expresses
+        noticedToday = editing.discovery
     }
 
     // MARK: - محتوى الصفحة
@@ -104,8 +135,15 @@ struct Page13: View {
                 Spacer()
             }
 
-            // Skip: يفتح Page14 بدون حفظ
-            Button(action: { showPopup = true }) {
+            // Skip: opens Page14. A new drawing is saved with empty answers;
+            // when editing, the answers it already has are kept.
+            Button(action: {
+                if editing == nil {
+                    drawnBecause = ""
+                    noticedToday = ""
+                }
+                showPopup = true
+            }) {
                 Text("Skip")
                     .font(.system(size: 20))
                     .underline()
@@ -163,12 +201,11 @@ struct Page13: View {
         )
     }
 
-    // MARK: - Next: يحفظ ثم يفتح Page14
+    // MARK: - Next: opens Page14
     private var nextButton: some View {
         HStack {
             Spacer()
             Button(action: {
-                saveAnswers()
                 showPopup = true
             }) {
                 Text("Next")
@@ -185,10 +222,37 @@ struct Page13: View {
         }
     }
 
-    // MARK: - الحفظ
-    private func saveAnswers() {
-        UserDefaults.standard.set(drawnBecause, forKey: "drawnBecause")
-        UserDefaults.standard.set(noticedToday, forKey: "noticedToday")
+    // MARK: - Saving
+    /// Saves the finished drawing with its answers, name and signature so Home can show it.
+    /// Answers the user left empty stay empty; a missing name becomes "Untitled".
+    private func saveDrawing(name: String, signature: UIImage, signatureStrokes: Data) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmedName.isEmpty ? "Untitled" : trimmedName
+
+        if let editing {
+            // Editing: update the same drawing, so no second copy is added
+            editing.update(
+                title: title,
+                image: drawing,
+                signature: signature,
+                signatureStrokes: signatureStrokes,
+                pagesData: pagesData,
+                expresses: drawnBecause,
+                discovery: noticedToday
+            )
+        } else {
+            // A new drawing counts for the streak (editing an old one does not)
+            StreakStore.record()
+            modelContext.insert(SavedDrawing(
+                title: title,
+                image: drawing,
+                signature: signature,
+                signatureStrokes: signatureStrokes,
+                pagesData: pagesData,
+                expresses: drawnBecause,
+                discovery: noticedToday
+            ))
+        }
     }
 }
 

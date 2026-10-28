@@ -2,9 +2,18 @@ import SwiftUI
 import PencilKit
 import Combine
 
+/// The picture of a finished drawing, handed to the questions pages when they open.
+struct FinishedDrawing: Identifiable {
+    let id = UUID()
+    let image: UIImage
+    /// The strokes of each page, so the drawing can be edited later.
+    let pagesData: [Data]
+}
+
 struct DrawingView: View {
     let mood: Mood?                 // nil when the user skipped the mood page
     var withScenario = true         // false for "Free draw": no drawing idea is shown
+    var editing: SavedDrawing?      // Set when editing a saved drawing: its strokes are loaded first
     var breakMinutes: Int? = 20     // Minutes of drawing before the break card shows; nil means no break reminder
     var onClose: (() -> Void)?      // Goes to the Home page. Linked later by the team; does nothing until then.
 
@@ -12,8 +21,10 @@ struct DrawingView: View {
     @State private var secondsLeft = 0
     @State private var showBreak = false   // Shows the pass card (and Deep Breath) on top of the drawing
     // After the X button: the questions, name and motivation pages, shown on top of the drawing
-    @State private var showQuestions = false
-    @State private var finishedImage = UIImage()
+    // The picture travels with the cover itself, so the pages always get the right one
+    @State private var finished: FinishedDrawing?
+    @State private var didLoadEditing = false
+    @State private var showSaveAlert = false   // Asked when the X button is pressed
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @ObservedObject private var player = SoundPlayer.shared
@@ -59,7 +70,24 @@ struct DrawingView: View {
             topBar
             slidersPanel
             bottomBar
+
+            // Asked when the X button is pressed
+            if showSaveAlert {
+                GlassConfirmDialog(
+                    title: "Do you want to save the sketch?",
+                    onYes: {
+                        showSaveAlert = false
+                        finishDrawing()
+                    },
+                    onNo: {
+                        showSaveAlert = false
+                        onClose?()
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+            }
         }
+        .animation(.spring(duration: 0.35), value: showSaveAlert)
         .navigationBarBackButtonHidden()
         .task {
             guard withScenario else { return }   // Free draw: skip the scenario
@@ -68,7 +96,10 @@ struct DrawingView: View {
             await ideas.showNext(for: mood)
         }
         .onDisappear { player.stop() }
-        .onAppear { secondsLeft = (breakMinutes ?? 0) * 60 }
+        .onAppear {
+            secondsLeft = (breakMinutes ?? 0) * 60
+            loadEditingDrawing()
+        }
         .onReceive(ticker) { _ in countDown() }
         // Covers the page instead of leaving it, so the drawing is kept when the user comes back
         .fullScreenCover(isPresented: $showBreak) {
@@ -77,8 +108,9 @@ struct DrawingView: View {
                 secondsLeft = (breakMinutes ?? 0) * 60   // start the next drawing period
             }
         }
-        .fullScreenCover(isPresented: $showQuestions) {
-            Page13(drawing: finishedImage, onFinish: finishAndGoHome)
+        .fullScreenCover(item: $finished) { finished in
+            Page13(drawing: finished.image, pagesData: finished.pagesData,
+                   editing: editing, onFinish: finishAndGoHome)
         }
         .alert("Delete this page?", isPresented: $showDeleteAlert) {
             Button("No", role: .cancel) {}
@@ -90,17 +122,6 @@ struct DrawingView: View {
 
     private var topBar: some View {
         HStack {
-            Button {
-                finishDrawing()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.title2.weight(.semibold))
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Close")
-
-            Spacer()
-
             if pages.count > 1 {
                 Text("Page \(currentPage + 1) of \(pages.count)")
                     .font(.subheadline.bold())
@@ -108,6 +129,18 @@ struct DrawingView: View {
                     .padding(.vertical, 8)
                     .background(.ultraThinMaterial, in: Capsule())
             }
+
+            Spacer()
+
+            // The close button is on the right
+            Button {
+                showSaveAlert = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.title2.weight(.semibold))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Close")
         }
         .foregroundStyle(Color.deepBrown)
         .padding(.horizontal, 24)
@@ -116,7 +149,7 @@ struct DrawingView: View {
 
     /// Counts down once a second and shows the break reminder at zero.
     private func countDown() {
-        guard breakMinutes != nil, secondsLeft > 0, !showBreak, !showQuestions else { return }
+        guard breakMinutes != nil, secondsLeft > 0, !showBreak, finished == nil else { return }
         secondsLeft -= 1
         if secondsLeft == 0 { showBreak = true }
     }
@@ -399,14 +432,19 @@ struct DrawingView: View {
     /// The first page as a picture on the paper color, for the pages after drawing.
     /// The open page lives in `canvas`, so it is used instead of the saved copy.
     private func exportImage() -> UIImage {
-        let size = canvas.bounds.size
-        guard size.width > 0, size.height > 0 else { return UIImage() }
-
-        let drawing = currentPage == 0 ? canvas.drawing : pages[0]
-        let strokes = drawing.image(from: canvas.bounds, scale: canvas.traitCollection.displayScale)
+        // Fall back to a fixed size if the canvas has no size yet, so the picture is never empty
+        let canvasSize = canvas.bounds.size
+        let size = canvasSize.width > 0 && canvasSize.height > 0 ? canvasSize : CGSize(width: 800, height: 1100)
         let rect = CGRect(origin: .zero, size: size)
 
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        let drawing = currentPage == 0 ? canvas.drawing : pages[0]
+        // The scale is 0 when the canvas is not on screen, so use 2 in that case
+        let scale = canvas.traitCollection.displayScale > 0 ? canvas.traitCollection.displayScale : 2
+        let strokes = drawing.image(from: rect, scale: scale)
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             UIColor(Color.paper).setFill()
             UIRectFill(rect)
             strokes.draw(in: rect)
@@ -415,13 +453,29 @@ struct DrawingView: View {
 
     /// The X button: takes a picture of the drawing and opens the questions page.
     private func finishDrawing() {
-        finishedImage = exportImage()
-        showQuestions = true
+        // The open page lives in `canvas`, so it replaces the saved copy of that page
+        var allPages = pages
+        allPages[currentPage] = canvas.drawing
+        finished = FinishedDrawing(
+            image: exportImage(),
+            pagesData: allPages.map { $0.dataRepresentation() }
+        )
+    }
+
+    /// When editing, puts the saved strokes back on the canvas (only once).
+    private func loadEditingDrawing() {
+        guard !didLoadEditing, let editing else { return }
+        didLoadEditing = true
+        let saved = editing.pagesData.compactMap { try? PKDrawing(data: $0) }
+        guard !saved.isEmpty else { return }   // Older drawings have no strokes saved: start blank
+        pages = Array(saved.prefix(maxPages))
+        currentPage = 0
+        canvas.drawing = pages[0]
     }
 
     /// Closes the questions pages first, then goes Home, so both don't change at the same moment.
     private func finishAndGoHome() {
-        showQuestions = false
+        finished = nil
         Task {
             try? await Task.sleep(for: .milliseconds(500))
             onClose?()

@@ -2,7 +2,10 @@ import SwiftUI
 
 struct MoodView: View {
     var withScenario = true             // Passed on to the drawing page (false = Free draw)
+    var editing: SavedDrawing?          // Passed on to the drawing page when editing a saved drawing
     var onClose: (() -> Void)?          // Called when the user closes the drawing page (goes back Home)
+
+    @Environment(\.dismiss) private var dismiss
 
     @State private var mood: Mood?
     @State private var sound: Sound?
@@ -50,29 +53,58 @@ struct MoodView: View {
             }
             .foregroundStyle(Color.deepBrown)
         }
-        // Skip sits in the top-right corner, like a toolbar button
-        .overlay(alignment: .topTrailing) {
-            Button { showSkipAlert = true } label: {
-                Text("Skip").frame(minWidth: 90)
+        // Our own top row instead of the system navigation bar, so the back arrow and Skip
+        // can be placed lower and away from the corners. They share one row, so they line up.
+        .navigationBarBackButtonHidden()
+        .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .top) {
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color.deepBrown)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .accessibilityLabel("Back")
+
+                Spacer()
+
+                // Plain underlined text, like the Skip on the questions page
+                Button { showSkipAlert = true } label: {
+                    Text("Skip")
+                        .font(.system(size: 20))
+                        .underline()
+                        .foregroundColor(.black)
+                        .padding(12)
+                        .contentShape(Rectangle())   // Keeps the tap area bigger than the text
+                }
+                .buttonStyle(.plain)
             }
-            .font(.system(size: 20, weight: .semibold))
-            .foregroundStyle(Color.deepBrown)
-            .buttonStyle(.glass)
-            .controlSize(.extraLarge)
-            .padding(.top, 24)
-            .padding(.trailing, 40)
+            .padding(.horizontal, 36)
+            .padding(.top, 28)
         }
-        .alert("Skip this step?", isPresented: $showSkipAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Skip") {
-                mood = nil
-                goToCanvas = true
+        // Same Liquid Glass dialog as the save question in the drawing page
+        .overlay {
+            if showSkipAlert {
+                GlassConfirmDialog(
+                    title: "Skip this step?",
+                    yesTitle: "Skip",
+                    noTitle: "Cancel",
+                    onYes: {
+                        showSkipAlert = false
+                        mood = nil
+                        goToCanvas = true
+                    },
+                    onNo: { showSkipAlert = false }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             }
-        } message: {
-            Text("You can start drawing right away without choosing a mood or a sound.")
         }
+        .animation(.spring(duration: 0.35), value: showSkipAlert)
         .navigationDestination(isPresented: $goToCanvas) {
-            DrawingView(mood: mood, withScenario: withScenario, onClose: onClose)
+            DrawingView(mood: mood, withScenario: withScenario, editing: editing, onClose: onClose)
         }
     }
 
