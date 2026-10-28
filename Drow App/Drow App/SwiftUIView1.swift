@@ -23,6 +23,8 @@ struct SwiftUIView1: View {
     @State private var searchText = ""
     // The id of the card in the middle of the carousel
     @State private var selectedID: String?
+    // True once the carousel has started on the middle drawing (done only the first time)
+    @State private var didStartInMiddle = false
     @State private var showMenu = false
     // Opens the mood page; `withScenario` decides if the drawing page shows an idea
     @State private var goToMood = false
@@ -274,8 +276,17 @@ struct SwiftUIView1: View {
                 .scrollPosition(id: $selectedID, anchor: .center)
                 .scrollIndicators(.hidden)
                 .onAppear {
-                    // Start on the newest drawing
-                    guard let newestID = drawings.first?.id else { return }
+                    // The first time Home opens, start on the middle drawing,
+                    // so there are drawings on both sides to browse
+                    guard !didStartInMiddle, !drawings.isEmpty else { return }
+                    didStartInMiddle = true
+                    let middleID = drawings[drawings.count / 2].id
+                    selectedID = middleID
+                    scrollProxy.scrollTo(middleID, anchor: .center)
+                }
+                .onChange(of: drawings.count) { oldCount, newCount in
+                    // A new drawing was saved: show it (the newest one is first)
+                    guard newCount > oldCount, let newestID = drawings.first?.id else { return }
                     selectedID = newestID
                     scrollProxy.scrollTo(newestID, anchor: .center)
                 }
