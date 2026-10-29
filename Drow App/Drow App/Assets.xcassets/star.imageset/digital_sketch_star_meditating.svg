@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="760" viewBox="0 0 760 760">
+<title>Digital Sketch star meditating</title>
+<defs><linearGradient id="gold" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#fff23b"/><stop offset="1" stop-color="#ffea29"/></linearGradient></defs>
+<!-- Mat -->
+<path d="M90 649 Q85 635 105 630 L648 630 Q668 635 670 650 L697 705 Q700 717 682 717 H76 Q60 717 67 705Z" fill="#fff6da" stroke="#492313" stroke-width="9" stroke-linejoin="round"/>
+<!-- legs folded -->
+<path d="M334 514 Q245 515 172 586 Q136 618 163 645 Q189 670 249 652 L380 615 Q510 671 570 651 Q613 636 585 600 Q534 530 429 513Z" fill="url(#gold)" stroke="#492313" stroke-width="11" stroke-linejoin="round"/>
+<path d="M179 625 Q230 635 314 593 M580 627 Q531 637 446 593" fill="none" stroke="#492313" stroke-width="8" stroke-linecap="round"/>
+<!-- body behind head -->
+<path d="M318 402 Q265 463 284 571 Q305 617 378 617 Q455 617 479 571 Q491 472 443 402Z" fill="url(#gold)" stroke="#492313" stroke-width="11" stroke-linejoin="round"/>
+<!-- head: same original head path scaled and translated -->
+<g transform="translate(0,-100)">
+<path fill="url(#gold)" stroke="#492313" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" d="M380 115 C401 114 418 153 446 206 L484 284 L592 301 C641 308 660 344 629 377 L535 473 L553 572 C561 619 532 640 497 618 L380 553 L263 618 C227 640 200 618 208 571 L226 473 L131 378 C99 346 119 309 168 302 L276 284 L314 207 C344 150 360 115 380 115 Z"/>
+<!-- same cheek blush and highlights -->
+<ellipse cx="277" cy="476" rx="27" ry="15" fill="#ffa65e"/><ellipse cx="484" cy="476" rx="27" ry="15" fill="#ffa65e"/>
+<path d="M341 167 Q322 195 314 217" fill="none" stroke="#fff9a6" stroke-width="20" stroke-linecap="round"/>
+<ellipse cx="551" cy="343" rx="31" ry="14" transform="rotate(22 551 343)" fill="#fff9a6"/>
+<!-- peaceful closed eyes -->
+<path d="M304 413 Q335 448 365 413 M396 413 Q426 448 456 413" fill="none" stroke="#492313" stroke-width="9" stroke-linecap="round"/>
+<path d="M364 488 Q381 504 398 488" fill="none" stroke="#492313" stroke-width="8" stroke-linecap="round"/>
+</g>
+<!-- arms in front, palms joined -->
+<path d="M267 445 Q240 485 258 533 Q274 554 304 532 L363 489 L378 450 Q379 436 370 435 Q359 436 352 452 L336 478 L289 505 Q284 484 303 458" fill="url(#gold)" stroke="#492313" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M493 445 Q520 485 502 533 Q486 554 456 532 L397 489 L382 450 Q381 436 390 435 Q401 436 408 452 L424 478 L471 505 Q476 484 457 458" fill="url(#gold)" stroke="#492313" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M380 444 L380 494 M368 449 Q372 463 373 479 M392 449 Q388 463 387 479" fill="none" stroke="#492313" stroke-width="6" stroke-linecap="round"/>
+<!-- Calm sparkles -->
+<path d="M119 257 Q127 233 134 257 Q140 276 161 282 Q140 288 134 311 Q127 288 107 282 Q126 276 119 257Z M619 175 Q626 155 632 175 Q638 193 657 199 Q638 205 632 224 Q626 205 607 199 Q626 193 619 175Z" fill="#fff9a6" stroke="#492313" stroke-width="6" stroke-linejoin="round"/>
+</svg>

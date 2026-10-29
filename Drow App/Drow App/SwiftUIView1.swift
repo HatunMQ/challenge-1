@@ -6,63 +6,49 @@
 //
 
 import SwiftUI
-
-/// A single drawing shown in the gallery carousel.
-struct DrawingItem: Identifiable {
-    /// Stable id so selection survives view re-creation (unique even if two items share an image).
-    let id: String
-    let title: String
-    let imageName: String
-    /// Answer shown on the back of the card: "What do you think your drawing expresses?"
-    let expresses: String
-    /// Answer shown on the back of the card: "Did you discover something while drawing?"
-    let discovery: String
-}
+import SwiftData
 
 struct SwiftUIView1: View {
 
     private let gold = Color(red: 0.62, green: 0.50, blue: 0.24)
     private let cream = Color(red: 0.96, green: 0.92, blue: 0.82)
 
-    @State private var drawings: [DrawingItem] = [
-        DrawingItem(
-            id: "scream",
-            title: "The Scream",
-            imageName: "scream",
-            expresses: "Anxiety and fear. The swirling sky and the figure holding its face show how overwhelming a feeling can become.",
-            discovery: "I noticed that bold, wavy lines can carry emotion even without any detail in the face."
-        ),
-        DrawingItem(
-            id: "match",
-            title: "Match",
-            imageName: "match",
-            expresses: "A spark of hope. A tiny flame can light up a dark place and change the whole mood.",
-            discovery: "Layering warm colors next to cool ones makes the fire feel like it is glowing."
-        ),
-        DrawingItem(
-            id: "monalisa",
-            title: "Mona Lisa",
-            imageName: "monalisa",
-            expresses: "Calm and mystery. The quiet smile makes you wonder what she is thinking.",
-            discovery: "Soft shading instead of hard outlines makes a face look more alive and natural."
-        ),
-        // Extra drawing (reuses an asset) for testing delete
-        DrawingItem(
-            id: "scream-test",
-            title: "Test Sketch",
-            imageName: "scream",
-            expresses: "A test sketch to try out the app, expressing curiosity about how everything works.",
-            discovery: "I discovered that practicing every day makes drawing easier and more fun."
-        )
-    ]
+    @Environment(\.modelContext) private var modelContext
+    /// The saved drawings, newest first.
+    @Query(sort: \SavedDrawing.createdAt, order: .reverse) private var drawings: [SavedDrawing]
 
     /// Ids of the cards currently flipped to show their back side.
     @State private var flippedIDs: Set<String> = []
     @State private var showDeleteConfirmation = false
     @State private var searchText = ""
-    // Start on the middle card
-    @State private var selectedID: String? = "match"
+    // The id of the card in the middle of the carousel
+    @State private var selectedID: String?
+    // True once the carousel has started on the middle drawing (done only the first time)
+    @State private var didStartInMiddle = false
     @State private var showMenu = false
+    // Opens the mood page; `withScenario` decides if the drawing page shows an idea
+    @State private var goToMood = false
+    @State private var withScenario = true
+    // The drawing being edited; nil when starting a new one
+    @State private var editingDrawing: SavedDrawing?
+    // The drawing whose name and signature window is open (opened by tapping the badge on the card)
+    @State private var badgeEditing: SavedDrawing?
+    // Which answer on the back of a card is being typed in (nil = none)
+    @FocusState private var focusedAnswer: String?
+
+    /// The days the user saved a drawing. Kept apart from the drawings, so deleting one keeps the streak.
+    @AppStorage(StreakStore.key) private var drawingDaysRaw = ""
+
+    /// Days in a row with a saved drawing (one missed day is forgiven).
+    private var streak: Int {
+        Streak.current(dates: StreakStore.days(from: drawingDaysRaw))
+    }
+
+    /// Adds the days of drawings saved before this feature existed (does nothing if already there).
+    private func addExistingDrawingDays() {
+        let updated = StreakStore.adding(drawings.map(\.createdAt), to: drawingDaysRaw)
+        if updated != drawingDaysRaw { drawingDaysRaw = updated }
+    }
 
     private var currentIndex: Int {
         drawings.firstIndex { $0.id == selectedID } ?? 0
@@ -80,11 +66,16 @@ struct SwiftUIView1: View {
                 searchBar
                     .padding(.top, 70)
 
-                carousel
-                    .padding(.top, 40)
+                if drawings.isEmpty {
+                    emptyState
+                        .padding(.top, 200)
+                } else {
+                    carousel
+                        .padding(.top, 40)
 
-                pageDots
-                    .padding(.top, 24)
+                    pageDots
+                        .padding(.top, 24)
+                }
 
                 Spacer()
             }
@@ -97,6 +88,56 @@ struct SwiftUIView1: View {
                     .padding(.top, 70)
             }
         }
+        // While the name and signature window is open, the page behind is blurred and can't be touched
+        .blur(radius: badgeEditing == nil ? 0 : 14)
+        .disabled(badgeEditing != nil)
+        .overlay {
+            if let drawing = badgeEditing {
+                ZStack {
+                    // Tapping outside the window closes it without saving
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .onTapGesture { badgeEditing = nil }
+
+                    Page14(
+                        onContinue: { name, signature, strokes in
+                            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            drawing.updateNameAndSignature(
+                                title: trimmed.isEmpty ? "Untitled" : trimmed,
+                                signature: signature,
+                                signatureStrokes: strokes
+                            )
+                            badgeEditing = nil
+                        },
+                        initialName: drawing.title,
+                        initialStrokes: drawing.signatureStrokes
+                    )
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: badgeEditing?.id)
+        .onAppear(perform: addExistingDrawingDays)
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(isPresented: $goToMood) {
+            // Closing the drawing page sets goToMood to false, which pops back to this page
+            MoodView(withScenario: withScenario, editing: editingDrawing, onClose: { goToMood = false })
+        }
+    }
+
+    // MARK: - Empty state
+
+    /// Shown until the first drawing is saved.
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "pencil.and.scribble")
+                .font(.system(size: 44))
+            Text("No drawings yet")
+                .font(.title2.weight(.semibold))
+            Text("Tap + to start your first one")
+                .font(.body)
+        }
+        .foregroundStyle(gold)
     }
 
     // MARK: - Background
@@ -119,11 +160,16 @@ struct SwiftUIView1: View {
         HStack {
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
-                    .foregroundStyle(gold)
-                Text("25")
+                    .foregroundStyle(Streak.flameColor(for: streak))
+                    .animation(.easeInOut, value: streak)
+                Text("\(streak)")
                     .font(.title3)
                     .foregroundStyle(gold)
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut, value: streak)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Streak: \(streak) days in a row")
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(.white.opacity(0.5), in: .capsule)
@@ -148,6 +194,9 @@ struct SwiftUIView1: View {
         VStack(spacing: 8) {
             Button {
                 showMenu = false
+                withScenario = false
+                editingDrawing = nil
+                goToMood = true
             } label: {
                 Text("free draw")
                     .font(.headline)
@@ -159,6 +208,9 @@ struct SwiftUIView1: View {
 
             Button {
                 showMenu = false
+                withScenario = true
+                editingDrawing = nil
+                goToMood = true
             } label: {
                 Text("Draw with scenario")
                     .font(.headline)
@@ -224,11 +276,19 @@ struct SwiftUIView1: View {
                 .scrollPosition(id: $selectedID, anchor: .center)
                 .scrollIndicators(.hidden)
                 .onAppear {
-                    // Start on the middle card so there are cards on both sides
-                    guard !drawings.isEmpty else { return }
+                    // The first time Home opens, start on the middle drawing,
+                    // so there are drawings on both sides to browse
+                    guard !didStartInMiddle, !drawings.isEmpty else { return }
+                    didStartInMiddle = true
                     let middleID = drawings[drawings.count / 2].id
                     selectedID = middleID
                     scrollProxy.scrollTo(middleID, anchor: .center)
+                }
+                .onChange(of: drawings.count) { oldCount, newCount in
+                    // A new drawing was saved: show it (the newest one is first)
+                    guard newCount > oldCount, let newestID = drawings.first?.id else { return }
+                    selectedID = newestID
+                    scrollProxy.scrollTo(newestID, anchor: .center)
                 }
                 }
 
@@ -239,37 +299,51 @@ struct SwiftUIView1: View {
         .frame(height: 640)
     }
 
-    private var filteredDrawings: [DrawingItem] {
+    private var filteredDrawings: [SavedDrawing] {
         searchText.isEmpty
             ? drawings
             : drawings.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
     }
 
+    /// Opens the selected drawing for editing, starting from the mood page like a new drawing.
+    private func editSelectedDrawing() {
+        guard let selected = drawings.first(where: { $0.id == selectedID }) else { return }
+        editingDrawing = selected
+        withScenario = false   // The drawing already exists, so no new idea is shown
+        showMenu = false
+        goToMood = true
+    }
+
     /// Removes the selected drawing and moves the selection to a neighbouring card.
     private func deleteSelectedDrawing() {
         guard let index = drawings.firstIndex(where: { $0.id == selectedID }) else { return }
+        // Work out the neighbour before deleting, because the list changes after the delete
+        let remaining = drawings.filter { $0.id != selectedID }
+        let nextID = remaining.isEmpty ? nil : remaining[min(index, remaining.count - 1)].id
         withAnimation {
-            drawings.remove(at: index)
-            selectedID = drawings.isEmpty ? nil : drawings[min(index, drawings.count - 1)].id
+            modelContext.delete(drawings[index])
+            selectedID = nextID
         }
     }
 
     /// A card that flips between the drawing (front) and its notes (back).
-    private func card(for item: DrawingItem) -> some View {
+    private func card(for item: SavedDrawing) -> some View {
         let isFlipped = flippedIDs.contains(item.id)
 
         return ZStack {
             cardFront(for: item)
                 .opacity(isFlipped ? 0 : 1)
                 .rotation3DEffect(.degrees(isFlipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                .allowsHitTesting(!isFlipped)   // The hidden side must not catch touches
             cardBack(for: item)
                 .opacity(isFlipped ? 1 : 0)
                 .rotation3DEffect(.degrees(isFlipped ? 0 : -180), axis: (x: 0, y: 1, z: 0))
+                .allowsHitTesting(isFlipped)
         }
     }
 
     /// The corner arrow that flips the card over (and back).
-    private func flipButton(for item: DrawingItem) -> some View {
+    private func flipButton(for item: SavedDrawing) -> some View {
         Button {
             withAnimation(.easeInOut(duration: 0.5)) {
                 if flippedIDs.contains(item.id) {
@@ -292,18 +366,18 @@ struct SwiftUIView1: View {
     }
 
     /// Back of the card: two questions with their answers.
-    private func cardBack(for item: DrawingItem) -> some View {
+    private func cardBack(for item: SavedDrawing) -> some View {
         VStack(spacing: 14) {
             Text("What do you think your drawing expresses?")
                 .font(.system(size: 13))
                 .foregroundStyle(.black)
-            answerBox(item.expresses, highlighted: true)
+            answerBox(Bindable(item).expresses, key: "\(item.id)-expresses", highlighted: true)
 
             Text("Did you discover something while drawing?")
                 .font(.system(size: 13))
                 .foregroundStyle(.black)
                 .padding(.top, 8)
-            answerBox(item.discovery, highlighted: false)
+            answerBox(Bindable(item).discovery, key: "\(item.id)-discovery", highlighted: false)
         }
         .padding(EdgeInsets(top: 44, leading: 16, bottom: 16, trailing: 16))
         .frame(height: 520)
@@ -315,12 +389,23 @@ struct SwiftUIView1: View {
     }
 
     /// A rounded box holding an answer; the highlighted one gets the blue outline.
-    private func answerBox(_ text: String, highlighted: Bool) -> some View {
-        Text(text)
+    /// An answer the user can tap and edit. Pressing Enter closes the keyboard, and the change is saved.
+    private func answerBox(_ text: Binding<String>, key: String, highlighted: Bool) -> some View {
+        TextEditor(text: text)
+            .focused($focusedAnswer, equals: key)
+            .scrollContentBackground(.hidden)
             .font(.system(size: 14))
             .foregroundStyle(.black)
-            .multilineTextAlignment(.leading)
-            .padding(16)
+            .padding(11)   // The editor adds its own space, so the total matches the old 16
+            .overlay(alignment: .topLeading) {
+                if text.wrappedValue.isEmpty {
+                    Text("Tap to write…")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.gray)
+                        .padding(16)
+                        .allowsHitTesting(false)
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(red: 0.97, green: 0.95, blue: 0.90), in: .rect(cornerRadius: 28))
             .overlay {
@@ -330,15 +415,28 @@ struct SwiftUIView1: View {
                 }
             }
             .shadow(color: .black.opacity(0.1), radius: 6, y: 3)
+            .onChange(of: text.wrappedValue) { _, newValue in
+                // Enter: remove the new line and close the keyboard
+                if newValue.contains("\n") {
+                    text.wrappedValue = newValue.replacingOccurrences(of: "\n", with: "")
+                    focusedAnswer = nil
+                }
+            }
+            .onChange(of: focusedAnswer) { oldValue, newValue in
+                // The keyboard closed on this answer: save it now
+                if oldValue == key && newValue != key {
+                    try? modelContext.save()
+                }
+            }
     }
 
     /// Front of the card: a framed drawing with a canvas inside.
-    private func cardFront(for item: DrawingItem) -> some View {
+    private func cardFront(for item: SavedDrawing) -> some View {
         let isSelected = selectedID == item.id
 
         return Color.clear
             .overlay {
-                Image(item.imageName)
+                Image(uiImage: item.image)
                     .resizable()
                     .scaledToFill()
             }
@@ -364,15 +462,20 @@ struct SwiftUIView1: View {
     }
 
     /// Small box on the drawing showing its name and signature.
-    private func titleBadge(for item: DrawingItem) -> some View {
+    private func titleBadge(for item: SavedDrawing) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.title)
                 .font(.system(size: 10))
                 .foregroundStyle(.black)
-            Image(systemName: "signature")
-                .font(.system(size: 30))
-                .foregroundStyle(.gray)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            // The user's own signature (nothing is shown if they did not sign)
+            Group {
+                if let signature = item.signature {
+                    Image(uiImage: signature)
+                        .resizable()
+                        .scaledToFit()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: 34, alignment: .trailing)
         }
         .padding(8)
         .frame(width: 80, height: 82, alignment: .topLeading)
@@ -381,13 +484,16 @@ struct SwiftUIView1: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(.gray.opacity(0.4), lineWidth: 1)
         }
+        // Tapping the badge opens the name and signature window, for a quick change
+        .contentShape(.rect(cornerRadius: 14))
+        .onTapGesture { badgeEditing = item }
     }
 
     /// Edit and delete buttons below the selected card.
     private var actionBar: some View {
         HStack(spacing: 28) {
             Button {
-                // Edit action
+                editSelectedDrawing()
             } label: {
                 Image(systemName: "pencil.tip.crop.circle")
                     .font(.title2)
@@ -427,5 +533,8 @@ struct SwiftUIView1: View {
 }
 
 #Preview {
-    SwiftUIView1()
+    NavigationStack {
+        SwiftUIView1()
+    }
+    .modelContainer(for: SavedDrawing.self, inMemory: true)
 }
