@@ -12,7 +12,7 @@ struct BreakFlowView: View {
     var body: some View {
         ZStack {
             if let breathMinutes {
-                Deep_Breath(duration: breathMinutes * 60, onSkip: onFinish)
+                DeepBreathView(duration: breathMinutes * 60, onSkip: onFinish)
                     .transition(.opacity)
             } else {
                 BreakCardView(

@@ -1,8 +1,8 @@
 import SwiftUI
 import PencilKit
 
-struct Page14: View {
-    // يرجع الاسم والتوقيع لما يضغط السهم
+struct NameSignatureView: View {
+    // Returns the name and signature when the arrow is tapped
   var onContinue: (String, UIImage, Data) -> Void = { _, _, _ in }   // name, signature picture, signature strokes
 
     // When editing a saved drawing, its old name and signature are shown first
@@ -35,7 +35,7 @@ struct Page14: View {
         }
     }
 
-    // MARK: - الكرت
+    // MARK: - Card
     private var card: some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 14) {
@@ -66,7 +66,7 @@ struct Page14: View {
                     SignatureCanvas(canvas: canvas, useEraser: useEraser, allowFinger: allowFinger)
                         .clipShape(RoundedRectangle(cornerRadius: 26))
 
-                    // أدوات: يد / فرشاة / ممحاة
+                    // Tools: finger / pen / eraser
                     HStack(spacing: 10) {
                         toolButton("hand.point.up.left", active: allowFinger) {
                             allowFinger.toggle()
@@ -86,7 +86,7 @@ struct Page14: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 36)
 
-            // سهم المتابعة
+            // Continue arrow
             Button {
                 let image = canvas.drawing.image(
                     from: canvas.bounds,
@@ -119,7 +119,7 @@ struct Page14: View {
     }
 }
 
-// MARK: - لوحة التوقيع (PencilKit)
+// MARK: - Signature canvas (PencilKit)
 struct SignatureCanvas: UIViewRepresentable {
     let canvas: PKCanvasView
     var useEraser: Bool
@@ -150,6 +150,6 @@ struct SignatureCanvas: UIViewRepresentable {
             .ignoresSafeArea()
             .blur(radius: 14)
 
-        Page14()
+        NameSignatureView()
     }
 }

@@ -109,7 +109,7 @@ struct DrawingView: View {
             }
         }
         .fullScreenCover(item: $finished) { finished in
-            Page13(drawing: finished.image, pagesData: finished.pagesData,
+            ReflectionView(drawing: finished.image, pagesData: finished.pagesData,
                    editing: editing, onFinish: finishAndGoHome)
         }
         .alert("Delete this page?", isPresented: $showDeleteAlert) {

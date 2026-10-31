@@ -15,7 +15,8 @@ final class SoundPlayer: ObservableObject {
 
         let url = ["mp3", "m4a", "wav"]
             .lazy
-            .compactMap { Bundle.main.url(forResource: sound.fileName, withExtension: $0) }
+            .compactMap { Bundle.main.url(forResource: sound.fileName, withExtension: $0)
+                ?? Bundle.main.url(forResource: sound.fileName, withExtension: $0, subdirectory: "Sounds") }
             .first
 
         guard let url else {
@@ -34,7 +35,6 @@ final class SoundPlayer: ObservableObject {
             player?.volume = isMuted ? 0 : currentVolume
             player?.prepareToPlay()
             player?.play()
-            print("Playing \(url.lastPathComponent)")
         } catch {
             print("Could not play \(url.lastPathComponent): \(error.localizedDescription)")
         }

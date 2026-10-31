@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct Page15: View {
+struct CelebrationView: View {
     var onDone: () -> Void = {}
 
     private let gold = Color(red: 0.97, green: 0.83, blue: 0.45)
@@ -15,15 +15,15 @@ struct Page15: View {
         }
     }
 
-    // MARK: - الكرت
+    // MARK: - Card
     private var card: some View {
         ZStack {
-            // 1) الكرت الأبيض (أسفل طبقة)
+            // 1) White card (bottom layer)
             RoundedRectangle(cornerRadius: 44)
                 .fill(Color(red: 0.99, green: 0.98, blue: 0.97))
                 .shadow(color: .black.opacity(0.25), radius: 30, x: 0, y: 18)
 
-            // 2) النجوم واللمعة (تحت الكلام)
+            // 2) Stars and sparkle (under the text)
             HeartBurst(color: gold)
                 .frame(width: 120, height: 100)
                 .offset(x: -150, y: -150)
@@ -40,7 +40,7 @@ struct Page15: View {
                 .frame(width: 34, height: 76)
                 .offset(x: 205, y: 50)
 
-            // 3) الكلام (فوق كل شي)
+            // 3) Text (top layer)
             Text("You did amazing!")
                 .font(.system(size: 50, weight: .heavy))
                 .foregroundColor(.black)
@@ -60,7 +60,7 @@ struct Page15: View {
     }
 }
 
-// MARK: - نجمة رباعية
+// MARK: - Four-point star
 struct Sparkle: View {
     var color: Color
 
@@ -80,20 +80,20 @@ struct Sparkle: View {
     }
 }
 
-// MARK: - لمعة القلب والخطوط
+// MARK: - Heart burst
 struct HeartBurst: View {
     var color: Color
 
     var body: some View {
         ZStack {
-            // الخطوط (من اليسار لليمين)
+            // Lines (left to right)
             burstLine(angle: -75, length: 22, x: -42, y: 22)
             burstLine(angle: -50, length: 34, x: -22, y: 6)
             burstLine(angle: -15, length: 30, x: 0, y: -4)
             burstLine(angle: 15, length: 26, x: 28, y: 4)
             burstLine(angle: 30, length: 22, x: 46, y: 16)
 
-            // القلب الصغير
+            // Small heart
             Image(systemName: "heart.fill")
                 .font(.system(size: 20))
                 .foregroundColor(color)
@@ -112,5 +112,5 @@ struct HeartBurst: View {
 }
 
 #Preview {
-    Page15()
+    CelebrationView()
 }

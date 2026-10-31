@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct Deep_Breath: View {
+struct DeepBreathView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let duration: Int
@@ -253,5 +253,5 @@ struct BreathWave: Shape {
 }
 
 #Preview {
-    Deep_Breath()
+    DeepBreathView()
 }
