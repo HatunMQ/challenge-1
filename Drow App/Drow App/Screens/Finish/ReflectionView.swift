@@ -1,9 +1,7 @@
-// xcode: set sdk=iOS
-
 import SwiftUI
 import SwiftData
 
-struct Page13: View {
+struct ReflectionView: View {
     let drawing: UIImage
     /// The strokes of each drawing page, saved so the drawing can be edited later.
     var pagesData: [Data] = []
@@ -25,9 +23,9 @@ struct Page13: View {
     private let cardColor = Color(red: 0.96, green: 0.95, blue: 0.93)
 
     var onNext: (String, UIImage) -> Void = { _, _ in }
-    var onFinish: () -> Void = {}   // Called when the motivation page (Page15) is tapped: goes back Home
+    var onFinish: () -> Void = {}   // Called when the motivation page (CelebrationView) is tapped: goes back Home
 
-    // MARK: - Body (الصفحة + النافذة)
+    // MARK: - Body (page + popup)
     var body: some View {
         ZStack {
             content
@@ -35,7 +33,7 @@ struct Page13: View {
                 .disabled(showPopup)
 
             if showPopup {
-                Page14(onContinue: { name, signature, strokes in
+                NameSignatureView(onContinue: { name, signature, strokes in
                     saveDrawing(name: name, signature: signature, signatureStrokes: strokes)
                     onNext(name, signature)
                     showMotivation = true
@@ -49,7 +47,7 @@ struct Page13: View {
 
             // The motivation card comes on top of the blurred pages; tapping it goes back Home
             if showMotivation {
-                Page15(onDone: onFinish)
+                CelebrationView(onDone: onFinish)
                     .transition(.scale.combined(with: .opacity))
             }
         }
@@ -66,7 +64,7 @@ struct Page13: View {
         noticedToday = editing.discovery
     }
 
-    // MARK: - محتوى الصفحة
+    // MARK: - Page content
     private var content: some View {
         VStack(spacing: 0) {
             header
@@ -135,7 +133,7 @@ struct Page13: View {
                 Spacer()
             }
 
-            // Skip: opens Page14. A new drawing is saved with empty answers;
+            // Skip: opens NameSignatureView. A new drawing is saved with empty answers;
             // when editing, the answers it already has are kept.
             Button(action: {
                 if editing == nil {
@@ -201,7 +199,7 @@ struct Page13: View {
         )
     }
 
-    // MARK: - Next: opens Page14
+    // MARK: - Next: opens NameSignatureView
     private var nextButton: some View {
         HStack {
             Spacer()
@@ -257,5 +255,5 @@ struct Page13: View {
 }
 
 #Preview {
-    Page13(drawing: UIImage(named: "matchstick") ?? UIImage())
+    ReflectionView(drawing: UIImage(named: "matchstick") ?? UIImage())
 }

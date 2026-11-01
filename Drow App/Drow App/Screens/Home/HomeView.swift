@@ -1,6 +1,6 @@
 //
-//  SwiftUIView1.swift
-//  First app
+//  HomeView.swift
+//  Sketchy
 //
 //  Created by Aseel Suliman Alfayez on 09/05/1448 AH.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-struct SwiftUIView1: View {
+struct HomeView: View {
 
     private let gold = Color(red: 0.62, green: 0.50, blue: 0.24)
     private let cream = Color(red: 0.96, green: 0.92, blue: 0.82)
@@ -99,7 +99,7 @@ struct SwiftUIView1: View {
                         .ignoresSafeArea()
                         .onTapGesture { badgeEditing = nil }
 
-                    Page14(
+                    NameSignatureView(
                         onContinue: { name, signature, strokes in
                             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
                             drawing.updateNameAndSignature(
@@ -534,7 +534,7 @@ struct SwiftUIView1: View {
 
 #Preview {
     NavigationStack {
-        SwiftUIView1()
+        HomeView()
     }
     .modelContainer(for: SavedDrawing.self, inMemory: true)
 }

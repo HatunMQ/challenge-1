@@ -9,11 +9,11 @@ import SwiftData
         WindowGroup {
             ZStack {
                 if showWelcome {
-                    page1_aliah(onStart: { showWelcome = false })
+                    WelcomeView(onStart: { showWelcome = false })
                         .transition(.opacity)
                 } else {
                     NavigationStack {
-                        SwiftUIView1()
+                        HomeView()
                     }
                     .transition(.opacity)
                 }
@@ -23,4 +23,7 @@ import SwiftData
             .modelContainer(for: SavedDrawing.self)
         }
     }
+}
+#Preview {
+    WelcomeView()
 }

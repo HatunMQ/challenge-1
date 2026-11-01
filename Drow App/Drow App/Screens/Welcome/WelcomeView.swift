@@ -1,6 +1,6 @@
 //
-//  page1-aliah.swift
-//  ch1
+//  WelcomeView.swift
+//  Sketchy
 //
 //  Created by Aliah on 11/05/1448 AH.
 //
@@ -11,7 +11,7 @@ extension Color {
     static let sparkleYellow = Color(red: 0.97, green: 0.80, blue: 0.40)
 }
 
-struct page1_aliah: View {
+struct WelcomeView: View {
 
     /// Called when the user taps Start: the app goes to the Home page.
     var onStart: () -> Void = {}
@@ -19,10 +19,10 @@ struct page1_aliah: View {
     // Flips once when the page appears, which starts the stars pulsing
     @State private var pulse = false
 
-    // خليها false لو النجوم موجودة أصلاً داخل صورة الباكقراوند
+    // Set to false if the stars are already part of the background image
     private let showSparkles = true
 
-    // مواقع النجوم كنسبة من حجم الشاشة (x, y)
+    // Star positions as a fraction of the screen size (x, y)
     private let sparkles: [(x: CGFloat, y: CGFloat, size: CGFloat)] = [
         (0.37, 0.29, 44),
         (0.59, 0.41, 44),
@@ -35,7 +35,7 @@ struct page1_aliah: View {
         GeometryReader { geo in
             ZStack {
 
-                // النجوم
+                // Stars
                 if showSparkles {
                     ForEach(sparkles.indices, id: \.self) { i in
                         pulsingSparkle(size: sparkles[i].size, index: i)
@@ -46,7 +46,7 @@ struct page1_aliah: View {
                     }
                 }
 
-                // النص
+                // Text
                 // "soul" and "relax" are marked, so two more stars can be placed next to those words
                 VStack(alignment: .leading, spacing: 28) {
                     Text("Hey, creative \(Text("soul").customAttribute(StarAnchor(name: "soul")))!")
@@ -79,7 +79,7 @@ struct page1_aliah: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 .padding(.leading, geo.size.width * 0.12)
 
-                // زر Start تحت يمين
+                // Start button, bottom right
                 VStack {
                     Spacer()
                     HStack {
@@ -101,12 +101,12 @@ struct page1_aliah: View {
                 }
             }
         }
-        // صورة الباكقراوند
+        // Background image
         .background(
             Image("back")
                 .resizable()
                 .scaledToFill()
-                .scaleEffect(1.06)      // يخفي الزوايا المدورة
+                .scaleEffect(1.06)      // Hides the rounded corners
                 .ignoresSafeArea()
         )
         .onAppear { pulse = true }
@@ -167,5 +167,5 @@ private struct StarAnchor: TextAttribute {
 }
 
 #Preview {
-    page1_aliah()
+    WelcomeView()
 }
